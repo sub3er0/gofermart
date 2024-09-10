@@ -2,7 +2,9 @@ package service
 
 import (
 	"fmt"
+	"gofermart/internal/models"
 	"gofermart/internal/repository"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -11,10 +13,37 @@ type UserService struct {
 
 func (us *UserService) IsUserExist(username string) bool {
 	isExist, err := us.UserRepository.IsUserExists(username)
+
 	if err != nil {
 		return false
 	}
 
 	fmt.Println(isExist)
 	return true
+}
+
+func (s *UserService) RegisterUser(user models.User) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+
+	if err != nil {
+		return err
+	}
+
+	user.Password = string(hashedPassword)
+
+	return s.UserRepository.CreateUser(user)
+}
+
+func (us *UserService) AuthenticateUser(username, password string) (models.User, error) {
+	user, err := us.UserRepository.GetUserByUsername(username)
+
+	if err != nil {
+		return models.User{}, err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return models.User{}, err
+	}
+
+	return user, nil
 }

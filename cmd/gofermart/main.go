@@ -4,8 +4,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"gofermart/db"
 	"gofermart/internal/config"
-	"gofermart/internal/gzip"
 	"gofermart/internal/handlers"
+	"gofermart/internal/middleware"
 	"gofermart/internal/repository"
 	"gofermart/internal/service"
 	"log"
@@ -39,9 +39,12 @@ func main() {
 	}
 
 	r := chi.NewRouter()
-	r.Use(gzip.RequestDecompressor)
+	r.Use(middleware.RequestDecompressor)
 	r.Post("/api/user/register", userHandler.Register)
-	r.Post("/api/user/login", userHandler.Login)
+
+	r.With(middleware.TokenAuthMiddleware).Route("/", func(r chi.Router) {
+		r.Post("/api/user/login", userHandler.Login)
+	})
 
 	err = http.ListenAndServe(cfg.ServerAddress, r)
 	if err != nil {

@@ -34,16 +34,25 @@ func main() {
 	userService := service.UserService{
 		UserRepository: &userRepository,
 	}
+	orderRepository := repository.OrderRepository{
+		DBStorage: PgsStorage,
+	}
+	orderService := service.OrderService{
+		OrderRepository: &orderRepository,
+	}
 	userHandler := handlers.UserHandler{
-		UserService: userService,
+		UserService:  userService,
+		OrderService: orderService,
 	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestDecompressor)
 	r.Post("/api/user/register", userHandler.Register)
+	r.Post("/api/user/login", userHandler.Login)
 
 	r.With(middleware.TokenAuthMiddleware).Route("/", func(r chi.Router) {
-		r.Post("/api/user/login", userHandler.Login)
+		r.Post("/api/user/orders", userHandler.SaveOrder)
+		r.Get("/api/user/orders", userHandler.GetOrders)
 	})
 
 	err = http.ListenAndServe(cfg.ServerAddress, r)

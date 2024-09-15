@@ -15,20 +15,20 @@ func (ur *UserRepository) CreateUser(user models.User) error {
 	return err
 }
 
-func (ur *UserRepository) IsUserExists(username string) (bool, error) {
+func (ur *UserRepository) IsUserExists(username string) int {
 	var id int
 	query := "SELECT id FROM users WHERE username = $1"
 	err := ur.DBStorage.Conn.QueryRow(ur.DBStorage.Ctx, query, username).Scan(&id)
 
 	if err != nil && err.Error() != "no rows in result set" {
-		return false, err
+		return -2
 	}
 
 	if err != nil && err.Error() == "no rows in result set" {
-		return false, nil
+		return -1
 	}
 
-	return true, nil
+	return id
 }
 
 func (ur *UserRepository) GetUserByUsername(username string) (models.User, error) {

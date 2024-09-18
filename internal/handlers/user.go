@@ -138,7 +138,7 @@ func (uh *UserHandler) SaveOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = uh.OrderService.SaveOrder(bodyString, userID)
+	err = uh.OrderService.SaveOrder(bodyString, userID, 11)
 
 	if err != nil {
 		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
@@ -167,4 +167,60 @@ func (uh *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	jsonData, err := json.Marshal(orderData)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(jsonData)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	return
+}
+
+func (uh *UserHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
+	username := r.Context().Value("username").(string)
+
+	userID := uh.UserService.UserRepository.IsUserExists(username)
+
+	if userID < 0 {
+		http.Error(w, "Пользователь не найден", http.StatusNotFound)
+		return
+	}
+
+	userBalance, err := uh.OrderService.GetUserBalance(userID)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	jsonData, err := json.Marshal(userBalance)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(jsonData)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	return
 }

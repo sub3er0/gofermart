@@ -53,6 +53,7 @@ func main() {
 	r.With(middleware.TokenAuthMiddleware).Route("/", func(r chi.Router) {
 		r.Post("/api/user/orders", userHandler.SaveOrder)
 		r.Get("/api/user/orders", userHandler.GetOrders)
+		r.Get("/api/user/balance", userHandler.GetBalance)
 	})
 
 	err = http.ListenAndServe(cfg.ServerAddress, r)

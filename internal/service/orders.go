@@ -18,8 +18,8 @@ func (or *OrderService) IsOrderExist(orderNumber string) bool {
 	return isExist
 }
 
-func (or *OrderService) SaveOrder(orderNumber string, userID int) error {
-	err := or.OrderRepository.SaveOrder(orderNumber, userID)
+func (or *OrderService) SaveOrder(orderNumber string, userID int, accrual int) error {
+	err := or.OrderRepository.SaveOrder(orderNumber, userID, accrual)
 
 	if err != nil {
 		return err
@@ -36,4 +36,14 @@ func (or *OrderService) GetUserOrders(userID int) ([]repository.OrderData, error
 	}
 
 	return orderData, nil
+}
+
+func (or *OrderService) GetUserBalance(userID int) (repository.UserBalance, error) {
+	userBalance, err := or.OrderRepository.GetUserBalance(userID)
+
+	if err != nil {
+		return userBalance, err
+	}
+
+	return userBalance, nil
 }

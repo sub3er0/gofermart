@@ -23,7 +23,19 @@ func (us *UserService) RegisterUser(user models.User) error {
 
 	user.Password = string(hashedPassword)
 
-	return us.UserRepository.CreateUser(user)
+	err = us.UserRepository.CreateUser(user)
+
+	if err != nil {
+		return err
+	}
+
+	err = us.UserRepository.CreateUserBalance(user)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (us *UserService) AuthenticateUser(username, password string) (models.User, error) {

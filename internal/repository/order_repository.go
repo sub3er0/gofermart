@@ -28,20 +28,24 @@ type UserBalance struct {
 	UsedBalance int `json:"used_balance"`
 }
 
-func (or *OrderRepository) IsOrderExist(orderNumber string) (bool, error) {
-	var id int
-	query := "SELECT id FROM orders WHERE number = $1"
-	err := or.DBStorage.Conn.QueryRow(or.DBStorage.Ctx, query, orderNumber).Scan(&id)
+func (or *OrderRepository) IsOrderExist(orderNumber string, userID int) (int, error) {
+	var id, orderUserID int
+	query := "SELECT id, user_id FROM orders WHERE number = $1"
+	err := or.DBStorage.Conn.QueryRow(or.DBStorage.Ctx, query, orderNumber).Scan(&id, &orderUserID)
 
 	if err != nil && err.Error() != "no rows in result set" {
-		return false, err
+		return 0, err
 	}
 
 	if err != nil && err.Error() == "no rows in result set" {
-		return false, nil
+		return 0, nil
 	}
 
-	return true, nil
+	if orderUserID != userID {
+		return 1, nil
+	} else {
+		return 2, nil
+	}
 }
 
 func (or *OrderRepository) SaveOrder(orderNumber string, userID int, accrual int) error {
@@ -59,7 +63,7 @@ func (or *OrderRepository) SaveOrder(orderNumber string, userID int, accrual int
 func (or *OrderRepository) GetUserOrders(userID int) ([]OrderData, error) {
 	var orders []OrderData
 
-	query := "SELECT number, status, accrual, created_at FROM orders WHERE user_id = $1"
+	query := "SELECT number, status, accrual, created_at FROM orders WHERE user_id = $1 ORDER BY updated_at DESC"
 	rows, err := or.DBStorage.Conn.Query(or.DBStorage.Ctx, query, userID)
 
 	if err != nil {

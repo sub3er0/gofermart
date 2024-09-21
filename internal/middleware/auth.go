@@ -23,7 +23,7 @@ func TokenAuthMiddleware(next http.Handler) http.Handler {
 		cookie, err := r.Cookie("token")
 
 		if err != nil {
-			http.Error(w, "Missing or invalid token", http.StatusUnauthorized)
+			http.Error(w, "Пользователь не авторизован", http.StatusUnauthorized)
 			return
 		}
 

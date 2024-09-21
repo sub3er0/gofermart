@@ -13,8 +13,14 @@ import (
 )
 
 type UserHandler struct {
-	UserService  service.UserService
-	OrderService service.OrderService
+	UserService     service.UserService
+	OrderService    service.OrderService
+	WithdrawService service.WithdrawService
+}
+
+type Withdraw struct {
+	Order string `json:"order"`
+	Sum   int    `json:"sum"`
 }
 
 func (uh *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +43,9 @@ func (uh *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := uh.UserService.RegisterUser(user); err != nil {
+	var err error
+
+	if user, err = uh.UserService.RegisterUser(user); err != nil {
 		http.Error(w, "Failed to register user", http.StatusInternalServerError)
 		return
 	}
@@ -49,7 +57,6 @@ func (uh *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Value:    token,
@@ -57,6 +64,7 @@ func (uh *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   3600,
 	})
+	w.WriteHeader(http.StatusCreated)
 
 	json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"})
 }
@@ -131,10 +139,18 @@ func (uh *UserHandler) SaveOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isOrderExist := uh.OrderService.IsOrderExist(bodyString)
+	result, err := uh.OrderService.IsOrderExist(bodyString, userID)
 
-	if isOrderExist == true {
-		http.Error(w, "Номер заказа уже был загружен другим пользователем", http.StatusUnprocessableEntity)
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	if result == 1 {
+		http.Error(w, "Номер заказа уже был загружен другим пользователем", http.StatusConflict)
+		return
+	} else if result == 2 {
+		http.Error(w, "Номер заказа уже был загружен этим пользователем", http.StatusOK)
 		return
 	}
 
@@ -209,6 +225,102 @@ func (uh *UserHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	jsonData, err := json.Marshal(userBalance)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(jsonData)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	return
+}
+
+func (uh *UserHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	username := r.Context().Value("username").(string)
+
+	userID := uh.UserService.UserRepository.IsUserExists(username)
+
+	if userID < 0 {
+		http.Error(w, "Пользователь не найден", http.StatusNotFound)
+		return
+	}
+
+	var withdraw Withdraw
+	err := json.NewDecoder(r.Body).Decode(&withdraw)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	isDigit := isDigits(withdraw.Order)
+
+	if isDigit != true {
+		http.Error(w, "Неверный номер заказа", http.StatusUnprocessableEntity)
+		return
+	}
+
+	result, err := uh.OrderService.IsOrderExist(withdraw.Order, userID)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	if result == 1 {
+		http.Error(w, "Номер заказа уже был загружен другим пользователем", http.StatusUnprocessableEntity)
+		return
+	}
+
+	var code int
+	code, err = uh.WithdrawService.Withdraw(userID, withdraw.Order, withdraw.Sum)
+
+	if code == -1 {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	if code == -2 {
+		http.Error(w, "На счету недостаточно средств", http.StatusPaymentRequired)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
+func (uh *UserHandler) Withdrawals(w http.ResponseWriter, r *http.Request) {
+	username := r.Context().Value("username").(string)
+
+	userID := uh.UserService.UserRepository.IsUserExists(username)
+
+	if userID < 0 {
+		http.Error(w, "Пользователь не найден", http.StatusNotFound)
+		return
+	}
+
+	withdrawalInfo, err := uh.WithdrawService.Withdrawals(userID)
+
+	if err != nil {
+		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	jsonData, err := json.Marshal(withdrawalInfo)
 
 	if err != nil {
 		http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)

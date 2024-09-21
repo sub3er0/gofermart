@@ -40,9 +40,16 @@ func main() {
 	orderService := service.OrderService{
 		OrderRepository: &orderRepository,
 	}
+	withdrawRepository := repository.WithdrawRepository{
+		DBStorage: PgsStorage,
+	}
+	withdrawService := service.WithdrawService{
+		WithdrawRepository: &withdrawRepository,
+	}
 	userHandler := handlers.UserHandler{
-		UserService:  userService,
-		OrderService: orderService,
+		UserService:     userService,
+		OrderService:    orderService,
+		WithdrawService: withdrawService,
 	}
 
 	r := chi.NewRouter()
@@ -54,6 +61,8 @@ func main() {
 		r.Post("/api/user/orders", userHandler.SaveOrder)
 		r.Get("/api/user/orders", userHandler.GetOrders)
 		r.Get("/api/user/balance", userHandler.GetBalance)
+		r.Post("/api/user/withdraw", userHandler.Withdraw)
+		r.Get("/api/user/withdrawals", userHandler.Withdrawals)
 	})
 
 	err = http.ListenAndServe(cfg.ServerAddress, r)

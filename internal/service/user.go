@@ -14,11 +14,11 @@ func (us *UserService) IsUserExist(username string) int {
 	return us.UserRepository.IsUserExists(username)
 }
 
-func (us *UserService) RegisterUser(user models.User) error {
+func (us *UserService) RegisterUser(user models.User) (models.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 
 	if err != nil {
-		return err
+		return user, err
 	}
 
 	user.Password = string(hashedPassword)
@@ -26,16 +26,16 @@ func (us *UserService) RegisterUser(user models.User) error {
 	err = us.UserRepository.CreateUser(user)
 
 	if err != nil {
-		return err
+		return user, err
 	}
 
 	err = us.UserRepository.CreateUserBalance(user)
 
 	if err != nil {
-		return err
+		return user, err
 	}
 
-	return nil
+	return user, nil
 }
 
 func (us *UserService) AuthenticateUser(username, password string) (models.User, error) {
